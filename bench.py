@@ -3,13 +3,16 @@ from __future__ import annotations
 import random
 import timeit
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import TYPE_CHECKING, List, Tuple
 
 from multipart.multipart import Field, File, FormParser, parse_options_header
 
+if TYPE_CHECKING:
+    from multipart.multipart import FieldProtocol, FileProtocol
+
 
 class TestFormParser():
-    def __init__(self, headers, config={}):
+    def __init__(self, headers, config={}) -> None:
         # Parse the Content-Type header to get the multipart boundary.
         self.headers = headers
         _, params = parse_options_header(self.headers['Content-Type'])
@@ -25,19 +28,19 @@ class TestFormParser():
         self.files: dict[str,File] = {}
         self.fields: dict[str, Field] = {}
 
-        def on_field(f: Field) -> None:
+        def on_field(f: FieldProtocol) -> None:
             self.fields[f.field_name.decode()] = f
 
-        def on_file(f: File) -> None:
+        def on_file(f: FileProtocol) -> None:
             self.files[f.field_name.decode()] = f
 
-        def on_end():
+        def on_end() -> None:
             self.ended = True
 
         # Get a form-parser instance.
         self.f = FormParser("multipart/form-data", on_field, on_file, on_end, boundary=self.boundary, config=config)
 
-    def parse(self, body: bytes):
+    def parse(self, body: bytes) -> None:
         self.f.write(body)
         self.f.finalize()
 
@@ -61,7 +64,7 @@ def build_body(boundary: bytes, parts: List[Part]) ->bytes:
     return bytes(body)
 
 
-def test():
+def test() -> None:
 
     test_data: list[Tuple[bytes, bytes]] = [
         #(b'fo' * 300000 + b'\r\n' + b'foobar', "b'fo' * 300000 + b'\\r\\n' + b'foobar',"),
@@ -75,22 +78,27 @@ def test():
         (random.randbytes(600000), 'randbytes(600000)'),
     ]
 
-    def run_it(data, verify=False):
+    def run_it(data, verify=False) -> None:
         boundary = random.randbytes(16).hex().encode()
-        body = build_body(boundary, [ 
+        part_list =  [ 
             Part(name=b'sample', body=data),
             Part(name=b'foo', body=b'fghj'),
-        ])
+            Part(name=b'sample2', body=data),
+            Part(name=b'sample3', body=data),
+            Part(name=b'sample4', body=data),
+        ]
+        body = build_body(boundary,part_list)
         headers = {'Content-Length': f'{len(body)}'.encode(),
                     'Content-Type': b'multipart/form-data; boundary=' + boundary}
         parser = TestFormParser(headers)
         parser.parse(body)
         if (verify):
-            fo = parser.files['sample'].file_object
-            fo.seek(0)
-            actual_data = fo.read()
-            if (actual_data != sample):
-                print(f'MISMATCH data {len(actual_data)} {len(sample)}')
+            for part in part_list:
+                fo = parser.files[part.name.decode()].file_object
+                fo.seek(0)
+                actual_data = fo.read()
+                if (actual_data != part.body):
+                    print(f'MISMATCH name={part.name} data actual len: {len(actual_data)} expected: {len(part.body)}')
 
     iters = 1
     times: list[float] = []
