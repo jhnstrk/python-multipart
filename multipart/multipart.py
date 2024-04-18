@@ -139,6 +139,7 @@ NULL = b"\x00"[0]
 # Mask for ASCII characters that can be http tokens.
 # Per RFC7230 - 3.2.6, this is all alpha-numeric characters 
 # and these: !#$%&'*+-.^_`|~
+# See https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6
 TOKEN_CHARS_SET = frozenset(
     b"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     b"abcdefghijklmnopqrstuvwxyz"
