@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import cProfile
 import random
 import timeit
 from dataclasses import dataclass
@@ -63,6 +64,27 @@ def build_body(boundary: bytes, parts: List[Part]) ->bytes:
     body += b'--' + crlf
     return bytes(body)
 
+def run_it(data, verify=False) -> None:
+    boundary = random.randbytes(16).hex().encode()
+    part_list =  [ 
+        Part(name=b'sample', body=data),
+        Part(name=b'foo', body=b'fghj'),
+        Part(name=b'sample2', body=data),
+        Part(name=b'sample3', body=data),
+        Part(name=b'sample4', body=data),
+    ]
+    body = build_body(boundary,part_list)
+    headers = {'Content-Length': f'{len(body)}'.encode(),
+                'Content-Type': b'multipart/form-data; boundary=' + boundary}
+    parser = TestFormParser(headers)
+    parser.parse(body)
+    if (verify):
+        for part in part_list:
+            fo = parser.files[part.name.decode()].file_object
+            fo.seek(0)
+            actual_data = fo.read()
+            if (actual_data != part.body):
+                print(f'MISMATCH name={part.name} data actual len: {len(actual_data)} expected: {len(part.body)}')
 
 def test() -> None:
 
@@ -77,28 +99,6 @@ def test() -> None:
         (b'fo' + b'oo' * 300000 + b'foobar',"b'fo' + b'oo' * 300000 + b'foobar'"),
         (random.randbytes(600000), 'randbytes(600000)'),
     ]
-
-    def run_it(data, verify=False) -> None:
-        boundary = random.randbytes(16).hex().encode()
-        part_list =  [ 
-            Part(name=b'sample', body=data),
-            Part(name=b'foo', body=b'fghj'),
-            Part(name=b'sample2', body=data),
-            Part(name=b'sample3', body=data),
-            Part(name=b'sample4', body=data),
-        ]
-        body = build_body(boundary,part_list)
-        headers = {'Content-Length': f'{len(body)}'.encode(),
-                    'Content-Type': b'multipart/form-data; boundary=' + boundary}
-        parser = TestFormParser(headers)
-        parser.parse(body)
-        if (verify):
-            for part in part_list:
-                fo = parser.files[part.name.decode()].file_object
-                fo.seek(0)
-                actual_data = fo.read()
-                if (actual_data != part.body):
-                    print(f'MISMATCH name={part.name} data actual len: {len(actual_data)} expected: {len(part.body)}')
 
     iters = 1
     times: list[float] = []
@@ -118,5 +118,12 @@ def test() -> None:
     mean = sum(times) / len(times)
     print(f'Biggest difference is {_max-_min:.2f}s ({_max/_min*100:.2f}%) for sample of the same size, mean: {mean}')
 
+def profile():
+    (sample, data_format) = (random.randbytes(60000000), 'randbytes(600000)')
+    run_it(sample)
+
+
 if __name__ == '__main__':
+    # python -m cProfile bench.py 
+    # profile()
     test()
