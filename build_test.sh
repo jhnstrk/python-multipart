@@ -13,6 +13,9 @@ for PYTHON_VERSION in 3.8 3.9 3.10 3.11 3.12; do
     .
 
   docker run -it --rm $IMAGE_TAG \
+    ruff format --check --diff multipart tests
+
+  docker run -it --rm $IMAGE_TAG \
     ruff check multipart tests
 
   docker run -it --rm $IMAGE_TAG \
