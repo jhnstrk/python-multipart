@@ -12,15 +12,16 @@ for PYTHON_VERSION in 3.8 3.9 3.10 3.11 3.12; do
     --build-arg PYTHON_VERSION=$PYTHON_VERSION \
     .
 
+  # Run linters
   docker run -it --rm $IMAGE_TAG \
-    ruff format --check --diff multipart tests
+    scripts/check
 
+  # Run tests
   docker run -it --rm $IMAGE_TAG \
-    ruff check multipart tests
+    scripts/test
 
+  # Run rename test
   docker run -it --rm $IMAGE_TAG \
-    inv mypy
-    
-  docker run -it --rm $IMAGE_TAG \
-    inv test
+    scripts/rename
+
 done

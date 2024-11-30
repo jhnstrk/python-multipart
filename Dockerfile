@@ -5,19 +5,19 @@ FROM python:${PYTHON_VERSION}
 #   --shell /bin/bash --uid 1001 appuser
 
 # USER appuser
+# Ref: https://docs.astral.sh/uv/guides/integration/docker/#installing-uv
+COPY --from=ghcr.io/astral-sh/uv:0.4.12 /uv /uvx /bin/
 
-RUN python -m venv /app/.venv
 # Enable venv
 ENV PATH="/app/.venv/bin:$PATH"
 
-RUN python -m pip install --upgrade pip
-
 WORKDIR /app
-
-COPY ./requirements.txt .
 
 # COPY --chown=appuser . .
 COPY . .
 
-RUN --mount=type=cache,target=/root/.cache/pip \
-  pip install .[dev]
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+  uv sync --python ${PYTHON_VERSION} --frozen
